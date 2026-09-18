@@ -1960,6 +1960,46 @@ function applyTheme(theme) {
   render();
 }
 
+const COLORWAY_STORAGE_KEY = 'phomymo_colorway';
+
+// A colorway repaints the accent ramp only; surfaces and text are untouched,
+// so the choice cannot affect readability. 'ember' is the built-in default
+// and carries no attribute - its values are the ones on :root.
+const DEFAULT_COLORWAY = 'ember';
+const COLORWAYS = [DEFAULT_COLORWAY, 'ocean', 'forest', 'orchid', 'graphite'];
+
+/**
+ * The colorway currently applied
+ * @returns {string} one of COLORWAYS
+ */
+function getColorway() {
+  const way = document.documentElement.getAttribute('data-colorway');
+  return COLORWAYS.includes(way) ? way : DEFAULT_COLORWAY;
+}
+
+/**
+ * Apply a colorway and remember it
+ * @param {string} colorway - one of COLORWAYS; anything else falls back to the default
+ */
+function applyColorway(colorway) {
+  const way = COLORWAYS.includes(colorway) ? colorway : DEFAULT_COLORWAY;
+
+  if (way === DEFAULT_COLORWAY) {
+    document.documentElement.removeAttribute('data-colorway');
+  } else {
+    document.documentElement.setAttribute('data-colorway', way);
+  }
+  safeStorageSet(COLORWAY_STORAGE_KEY, way);
+
+  const select = $('#colorway-select');
+  if (select) select.value = way;
+
+  // Selection handles and the grid are painted with literal colours rather
+  // than tokens, but the canvas still caches, so clear it to be safe
+  state.renderer?.clearCache();
+  render();
+}
+
 const GRID_STORAGE_KEY = 'phomymo_grid';
 
 /**
@@ -8417,6 +8457,15 @@ function init() {
   applyTheme(isDarkTheme() ? 'dark' : 'light');
   $('#theme-toggle')?.addEventListener('click', toggleTheme);
 
+  // Likewise for the colorway - the head script set the attribute, this just
+  // syncs the select to it. Applied live rather than on Save: it is a visual
+  // preference, and seeing it is the whole point of choosing it.
+  const colorwaySelect = $('#colorway-select');
+  if (colorwaySelect) {
+    colorwaySelect.value = getColorway();
+    colorwaySelect.addEventListener('change', (e) => applyColorway(e.target.value));
+  }
+
   // Empty-state shortcuts mirror the toolbar rather than duplicating its logic
   $('#empty-add-text')?.addEventListener('click', () => $('#add-text').click());
   $('#empty-add-qr')?.addEventListener('click', () => $('#add-qr').click());
@@ -8463,6 +8512,7 @@ function init() {
     feedSelect.value = state.printSettings.feed;
     printerModelSelect.value = state.printSettings.printerModel || 'auto';
     unitsSelect.value = getUnit();
+    $('#colorway-select') && ($('#colorway-select').value = getColorway());
     printSettingsDialog.classList.remove('hidden');
   });
 
@@ -8482,6 +8532,7 @@ function init() {
     feedSelect.value = 32;
     printerModelSelect.value = 'auto';
     unitsSelect.value = UNITS.MM;
+    applyColorway(DEFAULT_COLORWAY);
     updateUnitDisplay();
   });
 

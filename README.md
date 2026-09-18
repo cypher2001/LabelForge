@@ -72,6 +72,8 @@ Add a custom format after a pipe - `[[date|MM/DD/YYYY]]`, `[[dt|DD.MM.YY hh:mm A
 
 **Light & Dark Themes** - A token-based palette with a forge-orange accent, switchable from the header and remembered between visits. It follows your system preference on first load and is applied before first paint, so there is no flash of the wrong theme. Label previews stay paper-white in both themes, because a label is paper.
 
+**Colorways** - Five accent palettes - Ember (the forge-orange default), Ocean, Forest, Orchid and Graphite - chosen under **Colorway** in Print Settings. The choice applies the moment you pick it, is independent of light/dark (each colorway carries its own value for both), and is remembered between visits. Only the accent ramp moves; surfaces and text are untouched, so contrast is unaffected, and printed labels never are.
+
 **Mobile** - Touch UI with pinch-to-zoom, two-finger pan, and slide-up property panels. Designing, templates, the series generator and printing all work; grouping and the align tools are desktop-only.
 
 **Printer Status** - Live battery level, paper status, firmware version, and serial number with auto-query on connect.

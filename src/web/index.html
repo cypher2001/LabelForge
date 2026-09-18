@@ -63,6 +63,14 @@
         var dark = stored ? stored === 'dark'
           : window.matchMedia('(prefers-color-scheme: dark)').matches;
         if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+
+        // Same reason as the theme: set before first paint or the accent
+        // flashes forge-orange on every load. Kept to a literal whitelist
+        // so a corrupted storage value cannot inject an attribute.
+        var way = localStorage.getItem('phomymo_colorway');
+        if (way === 'ocean' || way === 'forest' || way === 'orchid' || way === 'graphite') {
+          document.documentElement.setAttribute('data-colorway', way);
+        }
       } catch (e) { /* private mode: fall through to light */ }
     })();
   </script>
@@ -122,6 +130,92 @@
       --lf-accent-text:    #fdba74;
       --lf-accent-fg:      #1a1206;
       --lf-glow:           rgba(251, 146, 60, 0.35);
+    }
+
+    /* ---------------------------------------------------------------
+       Colorways
+
+       A colorway repaints only the accent ramp - surfaces and text are
+       left alone, so contrast is unaffected by the choice. "ember" is
+       the default and lives in the blocks above, which is why it has no
+       block of its own.
+
+       Every colorway needs BOTH a light and a dark block. The light
+       selector :root[data-colorway="x"] (0,2,0) outranks the plain
+       [data-theme="dark"] block (0,1,0), so a colorway without a dark
+       block would leak its light accent into dark mode.
+       --------------------------------------------------------------- */
+
+    /* Ocean */
+    :root[data-colorway="ocean"] {
+      --lf-accent:       #0284c7;
+      --lf-accent-hover: #0369a1;
+      --lf-accent-soft:  #f0f9ff;
+      --lf-accent-text:  #075985;
+      --lf-accent-fg:    #ffffff;
+      --lf-glow:         rgba(2, 132, 199, 0.28);
+    }
+    :root[data-theme="dark"][data-colorway="ocean"] {
+      --lf-accent:       #38bdf8;
+      --lf-accent-hover: #7dd3fc;
+      --lf-accent-soft:  #0c2231;
+      --lf-accent-text:  #7dd3fc;
+      --lf-accent-fg:    #071722;
+      --lf-glow:         rgba(56, 189, 248, 0.35);
+    }
+
+    /* Forest */
+    :root[data-colorway="forest"] {
+      --lf-accent:       #059669;
+      --lf-accent-hover: #047857;
+      --lf-accent-soft:  #ecfdf5;
+      --lf-accent-text:  #065f46;
+      --lf-accent-fg:    #ffffff;
+      --lf-glow:         rgba(5, 150, 105, 0.28);
+    }
+    :root[data-theme="dark"][data-colorway="forest"] {
+      --lf-accent:       #34d399;
+      --lf-accent-hover: #6ee7b7;
+      --lf-accent-soft:  #0d2620;
+      --lf-accent-text:  #6ee7b7;
+      --lf-accent-fg:    #04140f;
+      --lf-glow:         rgba(52, 211, 153, 0.35);
+    }
+
+    /* Orchid */
+    :root[data-colorway="orchid"] {
+      --lf-accent:       #7c3aed;
+      --lf-accent-hover: #6d28d9;
+      --lf-accent-soft:  #f5f3ff;
+      --lf-accent-text:  #5b21b6;
+      --lf-accent-fg:    #ffffff;
+      --lf-glow:         rgba(124, 58, 237, 0.28);
+    }
+    :root[data-theme="dark"][data-colorway="orchid"] {
+      --lf-accent:       #a78bfa;
+      --lf-accent-hover: #c4b5fd;
+      --lf-accent-soft:  #1e1733;
+      --lf-accent-text:  #c4b5fd;
+      --lf-accent-fg:    #120c22;
+      --lf-glow:         rgba(167, 139, 250, 0.35);
+    }
+
+    /* Graphite - for anyone who wants the chrome to stay out of the way */
+    :root[data-colorway="graphite"] {
+      --lf-accent:       #475569;
+      --lf-accent-hover: #334155;
+      --lf-accent-soft:  #f8fafc;
+      --lf-accent-text:  #1e293b;
+      --lf-accent-fg:    #ffffff;
+      --lf-glow:         rgba(71, 85, 105, 0.28);
+    }
+    :root[data-theme="dark"][data-colorway="graphite"] {
+      --lf-accent:       #94a3b8;
+      --lf-accent-hover: #cbd5e1;
+      --lf-accent-soft:  #1e252f;
+      --lf-accent-text:  #cbd5e1;
+      --lf-accent-fg:    #0b1016;
+      --lf-glow:         rgba(148, 163, 184, 0.35);
     }
 
     html, body {
@@ -1587,6 +1681,21 @@
           <p class="text-xs text-gray-400 mt-1">Changes how label sizes are shown and entered. Printing is unaffected.</p>
         </div>
 
+        <div class="mb-4">
+          <label for="colorway-select" class="block text-sm font-medium text-gray-700 mb-1">Colorway</label>
+          <select id="colorway-select" class="prop-input">
+            <option value="ember">Ember (default)</option>
+            <option value="ocean">Ocean</option>
+            <option value="forest">Forest</option>
+            <option value="orchid">Orchid</option>
+            <option value="graphite">Graphite</option>
+          </select>
+          <div class="flex items-center gap-2 mt-2">
+            <span id="colorway-swatch" class="inline-block w-5 h-5 rounded-full border border-gray-300" style="background: var(--lf-accent)"></span>
+            <p class="text-xs text-gray-400">Applies immediately. Accent colour only - printed labels are unaffected.</p>
+          </div>
+        </div>
+
         <div class="prop-label">Printer Model</div>
           <select id="printer-model" class="prop-input">
             <option value="auto">Auto-detect</option>
@@ -2544,7 +2653,7 @@
     pdfjsModule.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs';
     window.pdfjsLib = pdfjsModule;
   </script>
-  <script type="module" src="app.js?v=169"></script>
+  <script type="module" src="app.js?v=170"></script>
   <script>
     // Show body once styles are ready
     requestAnimationFrame(() => {
