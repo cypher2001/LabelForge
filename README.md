@@ -2,7 +2,7 @@
 
 A free, browser-based label designer for Phomemo thermal printers. No drivers needed - connects via Bluetooth or USB.
 
-
+**Try it now: [labelforge2.vercel.app](https://labelforge2.vercel.app)**
 
 <p>
   <img src="screenshot.png" alt="LabelForge designing an asset tag" width="620" />
@@ -15,7 +15,9 @@ A free, browser-based label designer for Phomemo thermal printers. No drivers ne
 
 ## Quick Start
 
-Serve `src/web/` and open it in Chrome. Web Bluetooth requires HTTPS or localhost, so a plain file:// URL will not work:
+Open [labelforge2.vercel.app](https://labelforge2.vercel.app) in Chrome, click **Connect** to pair with your printer via Bluetooth (or **USB** for PM-241), design your label, and click **Print**.
+
+To run it yourself, serve `src/web/` and open it in Chrome. Web Bluetooth requires HTTPS or localhost, so a plain file:// URL will not work:
 
 ```bash
 cd src/web
@@ -227,6 +229,23 @@ Both keep `index.html` uncached while allowing `.js` to be cached indefinitely, 
 ## Support the Project
 
 If LabelForge is useful to you, consider [supporting HackerHomeLab on Ko-fi](https://ko-fi.com/hackerhomelab) to help fund ongoing development.
+
+## What's New Since the Fork
+
+LabelForge keeps the original's printer support and design tools, and adds production-run features, unit and layout precision, a rebuilt interface, and a much wider safety net:
+
+- **Incremental numbering** - print a run of sequentially numbered labels without building a CSV, and resume where the last run finished rather than reissuing numbers already stuck to something
+- **Fit Check** - render each element with the longest value it will ever hold, so a design that fits under it fits every label in the run
+- **Millimetres or inches** - inch presets for common US stock, display-only, so switching units never resizes a design
+- **Align & distribute** - edge alignment and even spacing by visual bounding box, so rotated elements line up by what you see
+- **Grid, snapping & rulers** - optional grid, snap-while-dragging, and rulers ticked in your chosen unit
+- **Template gallery** - four built-in starters plus live thumbnails of your saved designs, each rendered from the real design
+- **Light & dark themes, and five colorways** - applied before first paint, remembered between visits, with label previews staying paper-white because a label is paper
+- **Rebuilt toolbar and empty state** - labelled clusters instead of one flat row of eighteen buttons, and a blank label that offers a starting point
+- **CSV export and per-label copies** added to the existing template and batch printing
+- **Honest mobile scope** - the original claimed complete parity; grouping and align are desktop-only and now say so
+- **Tests grown from 6 spec files to 17**, including an enforced module cache-buster check that catches the stale-import failure which otherwise kills the whole app on reload
+- **An actual licence** - MIT, plus a NOTICE recording what this derives from
 
 ## Acknowledgements
 
