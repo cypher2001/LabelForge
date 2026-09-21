@@ -13,8 +13,8 @@
     "url": "git+https://github.com/cypher2001/LabelForge.git"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Cypher2001",
+  "license": "MIT",
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/cypher2001/LabelForge/issues"

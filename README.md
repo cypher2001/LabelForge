@@ -227,3 +227,15 @@ Both keep `index.html` uncached while allowing `.js` to be cached indefinitely, 
 ## Support the Project
 
 If LabelForge is useful to you, consider [supporting HackerHomeLab on Ko-fi](https://ko-fi.com/hackerhomelab) to help fund ongoing development.
+
+## Acknowledgements
+
+LabelForge began as a fork of [transcriptionstream/phomymo](https://github.com/transcriptionstream/phomymo), with early contributions from Brendan Matkin and Alec Holmes.
+
+Printer protocol research: [vivier/phomemo-tools](https://github.com/vivier/phomemo-tools), [yaddran/thermal-print](https://github.com/yaddran/thermal-print), and ooki1jp (M04AS/M04S).
+
+Libraries: JsBarcode, QRCode.js, jsPDF, Tailwind CSS.
+
+## License
+
+MIT - see [LICENSE](LICENSE).
