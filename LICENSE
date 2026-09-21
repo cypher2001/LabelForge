@@ -19,10 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-Portions of this software derive from the phomymo project by
-transcriptionstream (https://github.com/transcriptionstream/phomymo), which
-its README distributes under the MIT License. See the Acknowledgements section
-of README.md for the full list of upstream and third-party credits.

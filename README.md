@@ -238,4 +238,4 @@ Libraries: JsBarcode, QRCode.js, jsPDF, Tailwind CSS.
 
 ## License
 
-MIT - see [LICENSE](LICENSE).
+MIT - see [LICENSE](LICENSE). Derivation and third-party credits are recorded in [NOTICE](NOTICE).
