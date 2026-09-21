@@ -223,6 +223,12 @@ Two host configs live in the repo, and they do not interfere with each other:
 
 Both keep `index.html` uncached while allowing `.js` to be cached indefinitely, which is why every module is loaded through a `?v=` cache-buster.
 
+### Visitor analytics
+
+`index.html` carries the Vercel Web Analytics snippet. It records page views only - no cookies, no `localStorage`, no fingerprinting, and no cross-site identifier - and the figures are private to the project owner's Vercel dashboard. Nothing is surfaced in the app.
+
+It has to be switched on under **Analytics** in the Vercel project dashboard; until then `/_vercel/insights/script.js` 404s and the snippet does nothing. The same is true on localhost and on the Cloudflare Pages deploy, where that path does not exist at all - the request fails, `defer` swallows it, and the app is unaffected. `tests/01-getting-started.spec.ts` runs against a plain local server, so the 404 path is exercised on every test run.
+
 **When you change a module, bump its `?v=` everywhere it is imported.** Browsers hold `.js` for a year under `immutable` and will not revalidate, so a new `app.js` paired with a stale dependency fails at module-link time and the whole app goes dead - no canvas, no working buttons. Every import must carry a version, and all importers of a module must agree on it; `tests/10-module-versions.spec.ts` enforces both.
 
 

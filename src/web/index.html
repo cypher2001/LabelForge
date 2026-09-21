@@ -2662,5 +2662,22 @@
       });
     });
   </script>
+
+  <!-- Vercel Web Analytics.
+
+       Page views only, collected by the host rather than by this app: no
+       cookies, no localStorage, no fingerprinting, and no identifier that
+       follows a visitor between sites. Stats are private to the project
+       owner's Vercel dashboard; nothing is exposed in this page.
+
+       The script is served by Vercel itself and only exists on a Vercel
+       deployment - it must also be switched on under Analytics in the
+       project dashboard, or the path below 404s and this no-ops. That is
+       also what happens on localhost and on the Cloudflare Pages deploy:
+       the request fails, defer swallows it, and the app is unaffected. -->
+  <script>
+    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
 </body>
 </html>
