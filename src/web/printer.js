@@ -613,6 +613,21 @@ function rotateRaster90CCW(data, widthBytes, heightLines) {
  * @param {Function} options.onProgress - Progress callback (percent)
  */
 export async function print(transport, rasterData, options = {}) {
+  // A print is a long sequence of writes to a stream with no framing, so it
+  // has to hold the printer for the whole job. Without this, the status query
+  // that connecting schedules lands in the middle of the first label after
+  // pairing. Transports that predate withExclusive just run it directly.
+  if (transport.withExclusive) {
+    return transport.withExclusive(() => printJob(transport, rasterData, options));
+  }
+  return printJob(transport, rasterData, options);
+}
+
+/**
+ * The print job itself. Callers go through print(), which holds the printer
+ * for the duration; nothing in here may take that lock again.
+ */
+async function printJob(transport, rasterData, options = {}) {
   const { isBLE = false, deviceName = '', printerModel = 'auto', density = 6, feed = 32, continuous = false, onProgress = null } = options;
   const { data, widthBytes, heightLines } = rasterData;
 
@@ -1137,6 +1152,15 @@ async function printTSPL(transport, data, widthBytes, heightLines, labelWidthMm,
  * @param {Function} onProgress - Progress callback
  */
 export async function printDensityTest(transport, isBLE = true, onProgress = null) {
+  // Same reasoning as print(): this writes a whole job to an unframed stream
+  if (transport.withExclusive) {
+    return transport.withExclusive(() => densityTestJob(transport, isBLE, onProgress));
+  }
+  return densityTestJob(transport, isBLE, onProgress);
+}
+
+/** The density-test job itself; printDensityTest holds the printer for it. */
+async function densityTestJob(transport, isBLE = true, onProgress = null) {
   console.log('Printing density test pattern (using ESC 7 heat command)...');
 
   // Create a test pattern: 8 strips, each 30 pixels tall, 320 pixels wide

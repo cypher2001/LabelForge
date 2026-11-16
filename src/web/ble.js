@@ -37,6 +37,7 @@ export class BLETransport {
     this.onDisconnect = null;
     this.onPrinterInfo = null; // Callback for printer info updates
     this._useWriteWithResponse = false; // Some devices need writeValue instead of writeValueWithoutResponse
+    this._exclusiveTail = Promise.resolve(); // Serialises whole operations - see withExclusive
     this.printerInfo = {
       battery: null,
       paper: null,
@@ -657,17 +658,53 @@ export class BLETransport {
       throw new Error('Not connected');
     }
 
-    console.log('Querying all printer info...');
+    // Held for the whole batch: four commands 100ms apart is long enough for
+    // a print to start in the middle of it
+    return this.withExclusive(async () => {
+      console.log('Querying all printer info...');
 
-    // Query each type with a small delay between
-    const queries = ['battery', 'paper', 'firmware', 'serial'];
-    for (const q of queries) {
-      try {
-        await this.query(q);
-        await this.delay(100);
-      } catch (e) {
-        console.warn(`Query ${q} failed:`, e.message);
+      const queries = ['battery', 'paper', 'firmware', 'serial'];
+      for (const q of queries) {
+        try {
+          await this.query(q);
+          await this.delay(100);
+        } catch (e) {
+          console.warn(`Query ${q} failed:`, e.message);
+        }
       }
+    });
+  }
+
+  /**
+   * Run fn with exclusive use of the printer, queued behind any other holder.
+   *
+   * A printer has one write characteristic and no framing: whatever arrives is
+   * appended to whatever came before. A status query sent while raster data is
+   * streaming is read as more raster data, and the label comes out garbled.
+   *
+   * That is not hypothetical. Connecting schedules queryAll 500ms later, so
+   * pressing Print immediately after pairing put four query commands into the
+   * middle of the first job - and only ever the first, since queryAll runs
+   * once per connection.
+   *
+   * Whole operations take this, not individual writes: a print is a long
+   * sequence of send() calls and is only safe if it holds the printer for all
+   * of them. Never call it from inside something that already holds it.
+   *
+   * @param {Function} fn - async function run with exclusive access
+   * @returns {Promise<*>} whatever fn returns
+   */
+  async withExclusive(fn) {
+    const previous = this._exclusiveTail;
+    let release;
+    this._exclusiveTail = new Promise(resolve => { release = resolve; });
+
+    // A rejected holder must not poison the queue for everyone behind it
+    await previous.catch(() => {});
+    try {
+      return await fn();
+    } finally {
+      release();
     }
   }
 
