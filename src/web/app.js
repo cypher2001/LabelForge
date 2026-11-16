@@ -1439,6 +1439,13 @@ function render() {
     elementsToRender = evaluateExpressions(elementsToRender);
   }
 
+  // The inline editor sits directly on top of the element it edits. Painting
+  // the element too shows its text through the editor, half a glyph off,
+  // which reads as a drop shadow rather than as two copies of the text
+  if (state.editingTextId) {
+    elementsToRender = elementsToRender.filter(el => el.id !== state.editingTextId);
+  }
+
   state.renderer.renderAll(elementsToRender, state.selectedIds, state.alignmentGuides);
   updateEmptyState();
   drawRulers();
@@ -3273,7 +3280,6 @@ function startInlineEdit(elementId) {
   const width = element.width * zoom;
   const height = element.height * zoom;
 
-  // Apply styles to match the element (scaled by zoom)
   Object.assign(editor.style, {
     left: `${left}px`,
     top: `${top}px`,
@@ -3281,20 +3287,93 @@ function startInlineEdit(elementId) {
     height: `${height}px`,
     transform: `rotate(${element.rotation || 0}deg)`,
     transformOrigin: 'top left',
-    fontFamily: element.fontFamily || 'Inter, sans-serif',
-    fontSize: `${(element.fontSize || 24) * zoom}px`,
-    fontWeight: element.fontWeight || 'normal',
-    fontStyle: element.fontStyle || 'normal',
-    textAlign: element.align || 'left',
-    color: element.color === 'white' ? '#fff' : '#000',
-    lineHeight: '1.2',
   });
 
-  // Set content and show
+  // Set content, match the canvas's typography, then show
   editor.value = element.text || '';
+  syncInlineEditorStyle(element);
   editor.classList.remove('hidden');
   editor.focus();
   editor.select();
+
+  // editingTextId is set above, but nothing has repainted since: without this
+  // the element stays on the canvas under the editor for the whole session
+  render();
+}
+
+/**
+ * Match the inline editor's typography to what the canvas will draw.
+ *
+ * The editor is a textarea laid over the canvas, so any difference between
+ * the two text models is visible as the text jumping when editing ends.
+ * canvas.js renderTextElement is the authority here; everything below
+ * mirrors it, and the two have to be changed together:
+ *
+ *   - font size is the auto-scaled size, not the stored one, whenever
+ *     autoScale is on - that was the jump on blur, since the editor used
+ *     the stored size and the canvas drew the fitted one
+ *   - line height is fontSize * 1.2, set in px rather than as a ratio so
+ *     it cannot round differently from the canvas's arithmetic
+ *   - the canvas insets text 4px and wraps at width - 8, so the editor
+ *     carries 4px of horizontal padding and no border (an outline instead,
+ *     which paints outside the box and shifts nothing)
+ *   - the canvas aligns the text block vertically within the element; a
+ *     textarea can only start at the top, so the offset becomes padding-top
+ *
+ * Called again on every keystroke: the line count drives the vertical
+ * offset, so it moves as the text wraps.
+ *
+ * @param {Object} element - the text element being edited
+ */
+function syncInlineEditorStyle(element) {
+  const editor = $('#inline-text-editor');
+  if (!editor) return;
+
+  const zoom = state.renderer.zoom;
+  const text = editor.value || '';
+  const family = element.fontFamily || 'Inter, sans-serif';
+
+  const fontSize = element.autoScale
+    ? state.renderer.calculateAutoScaleFontSize(
+        text, element.width, element.height, family,
+        element.fontWeight, element.fontStyle, element.noWrap)
+    : (element.fontSize || 24);
+
+  const lineHeight = fontSize * 1.2;
+  const lines = element.noWrap
+    ? text.split('\n')
+    : state.renderer.wrapText(text, element.width - 8, fontSize, family,
+        element.fontWeight, element.fontStyle);
+  const blockHeight = Math.max(lines.length, 1) * lineHeight;
+
+  // Mirrors the textY cases in renderTextElement, expressed as the distance
+  // from the top of the element to the top of the text block
+  let padTop;
+  const vAlign = element.verticalAlign || 'middle';
+  if (vAlign === 'top') {
+    padTop = 2;
+  } else if (vAlign === 'bottom') {
+    padTop = element.height - blockHeight - 2;
+  } else {
+    padTop = (element.height - blockHeight) / 2;
+  }
+  padTop = Math.max(padTop, 0);
+
+  // White text would vanish on the editor's pale background, so the editor
+  // takes the element's own background rather than always being near-white
+  const onDark = element.color === 'white' || element.background === 'black';
+
+  Object.assign(editor.style, {
+    fontFamily: family,
+    fontSize: `${fontSize * zoom}px`,
+    fontWeight: element.fontWeight || 'normal',
+    fontStyle: element.fontStyle || 'normal',
+    textAlign: element.align || 'left',
+    lineHeight: `${lineHeight * zoom}px`,
+    color: onDark ? '#fff' : '#000',
+    background: onDark ? '#000' : '#fff',
+    padding: `${padTop * zoom}px ${4 * zoom}px`,
+  });
 }
 
 /**
@@ -3306,17 +3385,15 @@ function stopInlineEdit(save = true) {
 
   const editor = $('#inline-text-editor');
 
-  if (save) {
-    // Save the final text
-    modifyElement(state.editingTextId, { text: editor.value });
-  } else {
-    // Revert to original text
-    modifyElement(state.editingTextId, { text: state.editingOriginalText });
-  }
-
-  editor.classList.add('hidden');
+  // Cleared first: modifyElement repaints, and while editingTextId is still
+  // set that repaint would leave the element missing from the canvas
+  const elementId = state.editingTextId;
+  const originalText = state.editingOriginalText;
   state.editingTextId = null;
   state.editingOriginalText = null;
+  editor.classList.add('hidden');
+
+  modifyElement(elementId, { text: save ? editor.value : originalText });
 }
 
 /**
@@ -9208,6 +9285,10 @@ function init() {
   inlineEditor.addEventListener('input', (e) => {
     if (state.editingTextId) {
       modifyElement(state.editingTextId, { text: e.target.value });
+      // Line count drives the vertical offset, and autoScale's font size
+      // moves with the text, so both have to be recomputed as you type
+      const element = state.elements.find(el => el.id === state.editingTextId);
+      if (element) syncInlineEditorStyle(element);
     }
   });
 

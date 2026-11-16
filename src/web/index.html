@@ -1055,7 +1055,16 @@
       </div>
 
       <!-- Inline Text Editor Overlay -->
-      <textarea id="inline-text-editor" class="hidden fixed resize-none border-2 border-blue-400 rounded outline-none p-1" style="background: rgba(255,255,255,0.95); overflow: hidden; z-index: 100; box-sizing: border-box;"></textarea>
+      <!-- Inline text editor. Geometry and typography are set from JS in
+           syncInlineEditorStyle, which mirrors canvas.js renderTextElement so
+           the text does not move when editing ends. Two rules matter here:
+           the frame is an outline rather than a border, because an outline
+           paints outside the box and so shifts the text by nothing, and
+           padding is left to JS, which derives it from the element's vertical
+           alignment. Background is set from JS too, so white text stays
+           legible while being edited. -->
+      <textarea id="inline-text-editor" class="hidden fixed resize-none rounded"
+        style="border: none; outline: 2px solid var(--lf-accent); overflow: hidden; z-index: 100; box-sizing: border-box; box-shadow: none; margin: 0;"></textarea>
 
       <!-- Zoom Controls - Centered bottom (moves to top on mobile) -->
       <div id="zoom-controls" class="absolute bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 sm:gap-3 bg-white rounded-xl shadow-lg border border-gray-200 px-2 sm:px-4 py-2 sm:py-3 z-40">
@@ -2653,7 +2662,7 @@
     pdfjsModule.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs';
     window.pdfjsLib = pdfjsModule;
   </script>
-  <script type="module" src="app.js?v=170"></script>
+  <script type="module" src="app.js?v=171"></script>
   <script>
     // Show body once styles are ready
     requestAnimationFrame(() => {
