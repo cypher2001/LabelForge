@@ -17,7 +17,7 @@ test.describe.serial('Printer exclusive access', () => {
   /** Run a print and a status query at once; return the order of the writes */
   const racePrintAgainstQuery = (page: any) => page.evaluate(async () => {
     const { BLETransport } = await import('/ble.js?v=105');
-    const { print } = await import('/printer.js?v=132');
+    const { print } = await import('/printer.js?v=135');
 
     const t: any = new BLETransport();
     t.connected = true;

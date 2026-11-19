@@ -155,6 +155,24 @@
       "builtin": true
     },
     {
+      "id": "m102",
+      "name": "M102",
+      "group": "M110 Series",
+      "description": "2-inch label maker (48mm), Print Master/M120-class",
+      "protocol": "m102",
+      "widthBytes": 48,
+      "dpi": 203,
+      "alignment": "right",
+      "verticalOffsetDots": 5,
+      "rotated": false,
+      "tape": false,
+      "tapeWidths": null,
+      "defaultTapeWidth": null,
+      "namePatterns": ["M102", "Q306", "Q481", "Q485", "Q009", "Q244", "Q451", "Q592"],
+      "labelPresets": "m-series",
+      "builtin": true
+    },
+    {
       "id": "m110",
       "name": "M110 / M120",
       "group": "M110 Series",
