@@ -121,6 +121,7 @@ Then **Preview Labels** to check the result, or **Print All** to print the run w
 | M03 | 53mm (432px) | Mini sticker printer |
 | T02 | 48mm (384px) | Mini sticker printer |
 | M04S / M04AS | 53/80/110mm | 300 DPI multi-width printer (select paper size in settings) |
+| M102 | 48mm (384px) | Print Master/M120-class protocol |
 | M110 / M120 | 48mm (384px) | Narrow label makers |
 | M200 / M250 | 75mm (608px) | Mid-size labels |
 | M220 / M221 | 72mm (576px) | Wide labels |
@@ -132,6 +133,23 @@ Then **Preview Labels** to check the result, or **Print All** to print the run w
 The app auto-detects your printer model from the Bluetooth device name and configures the correct protocol, print width, DPI, and label presets. If auto-detection fails, you can manually select your model in Print Settings, or the app will prompt you on first connection.
 
 D-series printers print labels rotated 90° - the app handles this automatically. PM-241 printers use Bluetooth Classic (not BLE), so use the USB connection instead.
+
+### M102 / Q485 notes
+
+The built-in M102 profile also matches the common clone names `Q306`, `Q481`, `Q485`, `Q009`, `Q244`, `Q451`, and `Q592`.
+
+- It uses the Print Master/M120-class protocol, not the M110 `ESC N`/`1F F0` flow.
+- The raster is 384 dots wide and right-aligned for the 40mm-on-48mm-head layout.
+- A five-dot (0.625mm) vertical registration offset is applied by adding blank rows at the top. The bottom edge is preserved for edge-to-edge designs; the last 0.6mm may extend into the label gap.
+- This firmware answers status queries with `01 01`, so LabelForge skips battery/paper/firmware/serial queries for M102.
+- On Linux, Chrome may not expose Web Bluetooth by default. Launch it with `--enable-features=WebBluetooth` or enable `chrome://flags/#experimental-web-platform-features`.
+
+If a connection repeatedly fails after the printer was previously paired, remove the stale BlueZ bond and restart Bluetooth:
+
+```bash
+bluetoothctl remove <MAC>
+sudo systemctl restart bluetooth
+```
 
 ## Custom Printer Definitions
 
