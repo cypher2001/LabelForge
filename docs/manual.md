@@ -231,6 +231,12 @@ If auto-detection doesn't work (e.g., your printer broadcasts a serial number in
 
 ![Printer selected](screenshots/05-print-settings/03-printer-selected.png)
 
+#### M102 / Q485
+
+The M102 profile also matches the clone names `Q306`, `Q481`, `Q485`, `Q009`, `Q244`, `Q451`, and `Q592`. It uses the Print Master/M120-class protocol, a 384-dot right-aligned raster, and a five-dot vertical registration offset. The offset preserves the bottom edge; on edge-to-edge designs the last ~0.6 mm may print into the label gap.
+
+This firmware does not implement the usual `1A` status replies, so battery/paper/firmware/serial queries are skipped for M102. On Linux, Chrome may need the `--enable-features=WebBluetooth` flag or `chrome://flags/#experimental-web-platform-features` before Web Bluetooth is available.
+
 ### Print Density
 
 The density slider controls how dark the print is (1 = light, 8 = dark). Some printers may not respond to this setting.
@@ -269,7 +275,7 @@ Fill in the fields:
 - **ID** - Unique identifier (lowercase, no spaces)
 - **Display Name** - What appears in the dropdown
 - **Group** - Dropdown group label
-- **Protocol** - The print protocol your printer uses (M-series, M02, M110, D-series, P12/Tape, or TSPL)
+- **Protocol** - The print protocol your printer uses (M-series, M02, M04, M102, M110, D-series, P12/Tape, or TSPL)
 - **Width (bytes)** - Print head width (each byte = 8 pixels = ~1mm at 203 DPI)
 - **DPI** - 203 (standard) or 300 (high-res)
 - **Alignment** - How the label is positioned on the print head

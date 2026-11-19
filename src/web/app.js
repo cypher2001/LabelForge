@@ -8,7 +8,7 @@ import { CanvasRenderer, PX_PER_MM } from './canvas.js?v=118';
 import { STARTERS, getStarter } from './starters.js?v=1';
 import { BLETransport } from './ble.js?v=105';
 import { USBTransport } from './usb.js?v=102';
-import { print, printDensityTest, isDSeriesPrinter, isP12Printer, isA30Printer, isTapePrinter, isPM241Printer, isTSPLPrinter, isRotatedPrinter, getPrinterWidthBytes, getPrinterDpi, getPrinterAlignment, getPrinterDescription, isDeviceRecognized, getMatchedPattern, loadPrinterDefinitions, getAllPrinterDefinitions, getPrinterDefinition, getCustomPrinterDefinitions, saveCustomPrinterDefinition, deleteCustomPrinterDefinition, isBuiltinPrinter, resetBuiltinPrinter, getAvailableProtocols, getAvailableLabelPresets, getDetectedDefinition } from './printer.js?v=132';
+import { print, printDensityTest, isDSeriesPrinter, isP12Printer, isA30Printer, isTapePrinter, isPM241Printer, isTSPLPrinter, isM102Printer, isRotatedPrinter, getPrinterWidthBytes, getPrinterDpi, getPrinterAlignment, getPrinterDescription, isDeviceRecognized, getMatchedPattern, loadPrinterDefinitions, getAllPrinterDefinitions, getPrinterDefinition, getCustomPrinterDefinitions, saveCustomPrinterDefinition, deleteCustomPrinterDefinition, isBuiltinPrinter, resetBuiltinPrinter, getAvailableProtocols, getAvailableLabelPresets, getDetectedDefinition } from './printer.js?v=135';
 import {
   createTextElement,
   createImageElement,
@@ -727,7 +727,7 @@ function updatePrinterInfoUI(deviceName, printerModel) {
   $('#pi-device-name').textContent = deviceName || '--';
   $('#pi-model').textContent = getMatchedPattern(deviceName) || effectiveModel || 'Unknown';
   // P12 uses M-series protocol but prints rotated like D-series
-  $('#pi-protocol').textContent = isP12 ? 'P12 (rotated, M-series)' : isDSeries ? 'D-series (rotated)' : 'M-series (ESC/POS)';
+  $('#pi-protocol').textContent = isP12 ? 'P12 (rotated, M-series)' : isDSeries ? 'D-series (rotated)' : isM102Printer(deviceName, effectiveModel) ? 'M102 (Print Master)' : 'M-series (ESC/POS)';
   $('#pi-width').textContent = isDSeries ? 'Variable' : `${width * 8}px (${Math.round(width * 8 / 8)}mm)`;
 
   // Update summary in button
@@ -5819,11 +5819,34 @@ function initPrinterModelPrompt() {
   });
 }
 
+// A connection attempt is a long UI flow (picker, pairing, GATT discovery).
+// Print can call handleConnect while the Connect button is still busy; both
+// callers must await the same attempt instead of starting two GATT sessions.
+let connectionInProgress = null;
+
 /**
  * Handle connect button click
  * @param {MouseEvent} event - Click event (shift+click shows all devices)
  */
 async function handleConnect(event) {
+  if (connectionInProgress) {
+    console.log('Connection already in progress, waiting...');
+    return connectionInProgress;
+  }
+
+  connectionInProgress = connectToPrinter(event);
+  try {
+    return await connectionInProgress;
+  } finally {
+    connectionInProgress = null;
+  }
+}
+
+/**
+ * The actual connection flow, shared by the Connect button and Print.
+ * @param {MouseEvent} event
+ */
+async function connectToPrinter(event) {
   // Check if printing is supported in this browser
   if (!state.canPrint) {
     alert('Printing is not available in this browser.\n\nPlease use Chrome, Edge, or Opera on desktop for Bluetooth printing.');
@@ -5911,8 +5934,10 @@ async function handleConnect(event) {
     // Update printer info UI
     updatePrinterInfoUI(deviceName, effectiveModel);
 
-    // Set up printer info callback and query status (BLE only)
-    if (isBLE && state.transport.onPrinterInfo !== undefined) {
+    // Set up printer info callback and query status (BLE only).
+    // M102/Q485-class firmware answers these with 01 01 instead of 1A status
+    // frames, so the queries add noise without providing useful information.
+    if (isBLE && state.transport.onPrinterInfo !== undefined && !isM102Printer(deviceName, effectiveModel)) {
       state.transport.onPrinterInfo = updatePrinterInfoFromQuery;
 
       // Query printer info after a short delay

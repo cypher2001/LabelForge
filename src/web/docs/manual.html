@@ -515,6 +515,20 @@ serial number instead of a model name), select your model manually.</p>
 alt="Printer selected" />
 <figcaption aria-hidden="true">Printer selected</figcaption>
 </figure>
+<h3 id="m102--q485">M102 / Q485</h3>
+<p>The M102 profile also matches the clone names
+<code>Q306</code>, <code>Q481</code>, <code>Q485</code>,
+<code>Q009</code>, <code>Q244</code>, <code>Q451</code>, and
+<code>Q592</code>. It uses the Print Master/M120-class protocol, a
+384-dot right-aligned raster, and a five-dot vertical registration
+offset. The offset preserves the bottom edge; on edge-to-edge designs
+the last ~0.6 mm may print into the label gap.</p>
+<p>This firmware does not implement the usual <code>1A</code> status
+replies, so battery/paper/firmware/serial queries are skipped for M102.
+On Linux, Chrome may need the
+<code>--enable-features=WebBluetooth</code> flag or
+<code>chrome://flags/#experimental-web-platform-features</code> before
+Web Bluetooth is available.</p>
 <h3 id="print-density">Print Density</h3>
 <p>The density slider controls how dark the print is (1 = light, 8 =
 dark). Some printers may not respond to this setting.</p>
@@ -562,7 +576,7 @@ alt="New printer form" />
 <li><strong>Display Name</strong> - What appears in the dropdown</li>
 <li><strong>Group</strong> - Dropdown group label</li>
 <li><strong>Protocol</strong> - The print protocol your printer uses
-(M-series, M02, M110, D-series, P12/Tape, or TSPL)</li>
+(M-series, M02, M04, M102, M110, D-series, P12/Tape, or TSPL)</li>
 <li><strong>Width (bytes)</strong> - Print head width (each byte = 8
 pixels = ~1mm at 203 DPI)</li>
 <li><strong>DPI</strong> - 203 (standard) or 300 (high-res)</li>
