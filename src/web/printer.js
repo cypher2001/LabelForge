@@ -124,6 +124,7 @@ export function getAvailableProtocols() {
     { value: 'm-series', label: 'M-series (ESC/POS Raster)' },
     { value: 'm02', label: 'M02-series (ESC/POS with Prefix)' },
     { value: 'm04', label: 'M04-series (300 DPI)' },
+    { value: 'm102', label: 'M102-series (Print Master)' },
     { value: 'm110', label: 'M110-series' },
     { value: 'd-series', label: 'D-series (Rotated)' },
     { value: 'p12', label: 'P12/Tape (Rotated, Continuous)' },
@@ -284,6 +285,18 @@ const D_CMD = {
   ]),
   END: new Uint8Array([0x1b, 0x64, 0x00]),  // ESC d 0 - print, no feed (gap detection for die-cut)
   FEED: (dots) => new Uint8Array([0x1b, 0x4a, dots & 0xff]),  // ESC J n - feed n dots (for continuous tape)
+};
+
+// M102-series specific commands (Print Master / M120-class dialect)
+// The M102 does not use the M110 ESC N/footer flow. It sets density and speed
+// through the 1F 11 prefix and advertises one print with 1F 11 21.
+const M102_CMD = {
+  // 1F 11 02 <level> - print density (1-15)
+  DENSITY: (level) => new Uint8Array([0x1f, 0x11, 0x02, level]),
+  // 1F 11 23 <speed> - print speed
+  SPEED: (speed) => new Uint8Array([0x1f, 0x11, 0x23, speed]),
+  // 1F 11 21 <quantity> - print-multi
+  PRINT_MULTI: (quantity) => new Uint8Array([0x1f, 0x11, 0x21, quantity]),
 };
 
 // M110-series specific commands
@@ -453,6 +466,10 @@ export function isTSPLPrinter(deviceName, modelOverride = 'auto') {
 
 function isM110Printer(deviceName, modelOverride = 'auto') {
   return _resolveConfig(deviceName, modelOverride).protocol === 'm110';
+}
+
+export function isM102Printer(deviceName, modelOverride = 'auto') {
+  return _resolveConfig(deviceName, modelOverride).protocol === 'm102';
 }
 
 function isM04Printer(deviceName, modelOverride = 'auto') {
@@ -635,8 +652,12 @@ async function printJob(transport, rasterData, options = {}) {
   const isP12 = isP12Printer(deviceName, printerModel);
   const isM02 = isM02Printer(deviceName, printerModel);
   const isM04 = isM04Printer(deviceName, printerModel);
+  const isM102 = isM102Printer(deviceName, printerModel);
   const isM110 = isM110Printer(deviceName, printerModel);
   const isTSPL = isTSPLPrinter(deviceName, printerModel);
+  const verticalOffsetDots = isM102
+    ? (_resolveConfig(deviceName, printerModel).definition?.verticalOffsetDots || 0)
+    : 0;
   const printerDesc = getPrinterDescription(deviceName, printerModel);
   console.log(`Printing: ${widthBytes}x${heightLines} (${data.length} bytes)`);
   console.log(`Device: ${deviceName}, Model: ${printerModel}, Detected: ${printerDesc}`);
@@ -658,6 +679,9 @@ async function printJob(transport, rasterData, options = {}) {
     await printM02(transport, data, widthBytes, heightLines, density, onProgress);
   } else if (isM04 && isBLE) {
     await printM04(transport, data, widthBytes, heightLines, density, feed, onProgress);
+  } else if (isM102) {
+    // M102 uses the Print Master/M120-class protocol over BLE and USB
+    await printM102(transport, data, widthBytes, heightLines, density, isBLE, verticalOffsetDots, onProgress);
   } else if (isM110 && isBLE) {
     // M110/M110S/M120 use their own protocol
     await printM110(transport, data, widthBytes, heightLines, density, onProgress);
@@ -905,6 +929,89 @@ async function printM04(transport, data, widthBytes, heightLines, density, feed,
     await transport.delay(30);
   }
   await transport.delay(500);
+
+  console.log('Print complete!');
+}
+
+/**
+ * Print via the M102 protocol (Print Master / M120-class dialect).
+ *
+ * Sequence:
+ *   1F 11 02 <density>   set density (1-15)
+ *   1F 11 23 <speed>     set speed
+ *   1B 40                ESC @ init
+ *   1F 11 21 01          print-multi, one copy
+ *   1D 76 30 00 ...      GS v 0 raster
+ *
+ * No M110-style 1F F0 footer: the label sensor advances the media after the
+ * raster block. The raster must be exactly 384 dots (48 bytes) wide.
+ */
+async function printM102(transport, data, widthBytes, heightLines, density, isBLE, verticalOffsetDots, onProgress) {
+  console.log('Using M102 protocol (Print Master / M120-class)...');
+
+  if (widthBytes !== 48) {
+    throw new Error(`M102 expects 48 bytes per row (384 dots), got ${widthBytes}`);
+  }
+
+  // Shift the raster vertically. Positive values add blank rows at the top
+  // and make the raster taller, so the bottom edge is preserved for
+  // edge-to-edge designs. The extra rows extend into the label gap, which the
+  // gap sensor ignores when it advances to the next label.
+  let printHeight = heightLines;
+  if (verticalOffsetDots) {
+    const offset = Math.trunc(verticalOffsetDots);
+    const shiftBytes = Math.abs(offset) * widthBytes;
+
+    if (offset > 0) {
+      const padded = new Uint8Array(data.length + shiftBytes);
+      padded.set(data, shiftBytes);
+      data = padded;
+      printHeight += offset;
+    } else if (shiftBytes < data.length) {
+      data = data.subarray(shiftBytes);
+      printHeight -= Math.abs(offset);
+    }
+
+    console.log(`Applying M102 vertical offset: ${offset} dots`);
+  }
+
+  // Map the UI density (1-8) to the printer's 1-15 range.
+  const densityLevel = Math.round(1 + (density - 1) * 14 / 7);
+  console.log(`Setting density ${density} (M102 value: ${densityLevel})...`);
+  await transport.send(M102_CMD.DENSITY(densityLevel));
+  await transport.delay(30);
+
+  console.log('Setting speed...');
+  await transport.send(M102_CMD.SPEED(5));
+  await transport.delay(30);
+
+  console.log('Sending init...');
+  await transport.send(CMD.INIT);
+  await transport.delay(100);
+
+  console.log('Sending print-multi (1 copy)...');
+  await transport.send(M102_CMD.PRINT_MULTI(1));
+  await transport.delay(30);
+
+  console.log('Sending header...');
+  await transport.send(CMD.RASTER_HEADER(widthBytes, printHeight));
+
+  console.log('Sending data...');
+  const chunkSize = isBLE ? 128 : 512;
+
+  for (let i = 0; i < data.length; i += chunkSize) {
+    const chunk = data.slice(i, Math.min(i + chunkSize, data.length));
+    await transport.send(chunk);
+    await transport.delay(20);
+
+    if (onProgress) {
+      const progress = Math.round((i + chunk.length) / data.length * 100);
+      onProgress(progress);
+    }
+  }
+
+  // No M110 footer here. Give the printer time to feed to the next gap.
+  await transport.delay(isBLE ? 500 : 100);
 
   console.log('Print complete!');
 }
