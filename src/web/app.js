@@ -5819,11 +5819,34 @@ function initPrinterModelPrompt() {
   });
 }
 
+// A connection attempt is a long UI flow (picker, pairing, GATT discovery).
+// Print can call handleConnect while the Connect button is still busy; both
+// callers must await the same attempt instead of starting two GATT sessions.
+let connectionInProgress = null;
+
 /**
  * Handle connect button click
  * @param {MouseEvent} event - Click event (shift+click shows all devices)
  */
 async function handleConnect(event) {
+  if (connectionInProgress) {
+    console.log('Connection already in progress, waiting...');
+    return connectionInProgress;
+  }
+
+  connectionInProgress = connectToPrinter(event);
+  try {
+    return await connectionInProgress;
+  } finally {
+    connectionInProgress = null;
+  }
+}
+
+/**
+ * The actual connection flow, shared by the Connect button and Print.
+ * @param {MouseEvent} event
+ */
+async function connectToPrinter(event) {
   // Check if printing is supported in this browser
   if (!state.canPrint) {
     alert('Printing is not available in this browser.\n\nPlease use Chrome, Edge, or Opera on desktop for Bluetooth printing.');
